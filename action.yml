@@ -1,0 +1,99 @@
+name: 'Dependency Checker'
+description: 'Scan for outdated and vulnerable dependencies in your project'
+author: 'Ollie'
+
+inputs:
+  npm-audit:
+    description: 'Run npm audit for vulnerabilities'
+    required: false
+    default: 'true'
+  outdated-check:
+    description: 'Check for outdated dependencies'
+    required: false
+    default: 'true'
+  fail-on-vulnerabilities:
+    description: 'Fail workflow if vulnerabilities found'
+    required: false
+    default: 'true'
+  fail-on-outdated:
+    description: 'Fail workflow if outdated dependencies found'
+    required: false
+    default: 'false'
+  exclude-dev:
+    description: 'Exclude dev dependencies from checks'
+    required: false
+    default: 'false'
+
+outputs:
+  vulnerabilities:
+    description: 'Number of vulnerabilities found'
+  outdated:
+    description: 'Number of outdated packages'
+  audit-report:
+    description: 'Full audit report in JSON'
+  outdated-report:
+    description: 'Full outdated report in JSON'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Node version
+      shell: bash
+      run: node --version && npm --version
+
+    - name: Run npm audit
+      shell: bash
+      id: audit
+      continue-on-error: true
+      run: |
+        echo "Running npm audit..."
+        AUDIT_OUTPUT=$(npm audit --json 2>/dev/null || echo '{}')
+        echo "$AUDIT_OUTPUT" > audit-report.json
+        VULN_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.total // 0' 2>/dev/null || echo '0')
+        echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
+        cat audit-report.json | jq '.' || echo "{}"
+
+    - name: Check outdated dependencies
+      shell: bash
+      id: outdated
+      continue-on-error: true
+      run: |
+        echo "Checking for outdated packages..."
+        OUTDATED=$(npm outdated --json 2>/dev/null || echo '{}')
+        echo "$OUTDATED" > outdated-report.json
+        OUTDATED_COUNT=$(echo "$OUTDATED" | jq 'length' 2>/dev/null || echo '0')
+        echo "outdated=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+        cat outdated-report.json | jq '.' || echo "{}"
+
+    - name: Prepare outputs
+      shell: bash
+      run: |
+        echo "audit-report=$(cat audit-report.json | jq -c '.')" >> $GITHUB_OUTPUT
+        echo "outdated-report=$(cat outdated-report.json | jq -c '.')" >> $GITHUB_OUTPUT
+
+    - name: Post summary to PR
+      if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        VULN_COUNT: ${{ steps.audit.outputs.vulnerabilities }}
+        OUTDATED_COUNT: ${{ steps.outdated.outputs.outdated }}
+      run: |
+        {
+          echo "## 📦 Dependency Check"
+          echo ""
+          echo "| Category | Count |"
+          echo "|----------|-------|"
+          echo "| 🔴 Vulnerabilities | $VULN_COUNT |"
+          echo "| ⚠️  Outdated | $OUTDATED_COUNT |"
+          echo ""
+        } >> $GITHUB_STEP_SUMMARY
+
+    - name: Fail on vulnerabilities
+      if: ${{ inputs.fail-on-vulnerabilities == 'true' && steps.audit.outputs.vulnerabilities > 0 }}
+      shell: bash
+      run: exit 1
+
+    - name: Fail on outdated
+      if: ${{ inputs.fail-on-outdated == 'true' && steps.outdated.outputs.outdated > 0 }}
+      shell: bash
+      run: exit 1
