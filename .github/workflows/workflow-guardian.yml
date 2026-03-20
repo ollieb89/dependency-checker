@@ -1,25 +1,9 @@
 name: workflow-guardian
-
-on:
-  pull_request:
-    paths:
-      - '.github/workflows/**'
-      - 'action.yml'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/**'
-      - 'action.yml'
+on: [push]
 
 jobs:
-  validate:
+  guardian:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate action.yml
-        run: |
-          if ! grep -q "name:" action.yml; then
-            echo "❌ action.yml missing 'name' field"
-            exit 1
-          fi
-          echo "✅ action.yml is valid"
+      - uses: ollieb89/workflow-guardian@v1.0.0

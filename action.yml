@@ -1,33 +1,58 @@
 name: 'Dependency Checker'
-description: 'Scan for outdated and vulnerable dependencies'
+description: 'Scan for outdated and vulnerable dependencies. Reports summary in PR comment.'
 author: 'ollieb89'
 
 inputs:
-  npm-check:
-    description: 'Check npm dependencies'
+  npm-check-updates:
+    description: 'Check npm packages for outdated versions'
     required: false
     default: 'true'
-  severity:
-    description: 'Minimum severity level (low, moderate, high, critical)'
+  npm-audit:
+    description: 'Run npm audit for security vulnerabilities'
     required: false
-    default: 'moderate'
+    default: 'true'
+  fail-on-vulnerabilities:
+    description: 'Fail workflow if vulnerabilities found'
+    required: false
+    default: 'false'
   fail-on-outdated:
-    description: 'Fail if outdated packages found'
+    description: 'Fail workflow if outdated deps found'
     required: false
     default: 'false'
 
 outputs:
   vulnerabilities-found:
-    description: 'Number of vulnerabilities found'
+    description: 'Boolean: vulnerabilities detected'
   outdated-found:
-    description: 'Number of outdated packages found'
-  report:
-    description: 'Full report as JSON'
+    description: 'Boolean: outdated packages detected'
+  vulnerability-count:
+    description: 'Count of vulnerable packages'
+  outdated-count:
+    description: 'Count of outdated packages'
 
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Run dependency checks
+      shell: bash
+      run: |
+        node ${{ github.action_path }}/dist/index.js
+      env:
+        NPM_CHECK_UPDATES: ${{ inputs.npm-check-updates }}
+        NPM_AUDIT: ${{ inputs.npm-audit }}
+        FAIL_ON_VULNERABILITIES: ${{ inputs.fail-on-vulnerabilities }}
+        FAIL_ON_OUTDATED: ${{ inputs.fail-on-outdated }}
+        GITHUB_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
 
 branding:
-  icon: 'shield-alert'
-  color: 'red'
+  icon: 'alert-circle'
+  color: 'orange'
