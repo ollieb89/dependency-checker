@@ -1,58 +1,41 @@
 name: 'Dependency Checker'
-description: 'Scan for outdated and vulnerable dependencies. Reports summary in PR comment.'
-author: 'ollieb89'
+description: 'Scan for outdated and vulnerable dependencies with npm audit and version checks'
+author: 'Ollie B'
 
 inputs:
-  npm-check-updates:
-    description: 'Check npm packages for outdated versions'
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '22'
+  check-npm-audit:
+    description: 'Run npm audit for vulnerabilities'
     required: false
     default: 'true'
-  npm-audit:
-    description: 'Run npm audit for security vulnerabilities'
+  check-outdated:
+    description: 'Check for outdated packages'
     required: false
     default: 'true'
-  fail-on-vulnerabilities:
-    description: 'Fail workflow if vulnerabilities found'
+  fail-on-high:
+    description: 'Fail if high/critical vulnerabilities found'
     required: false
-    default: 'false'
+    default: 'true'
   fail-on-outdated:
-    description: 'Fail workflow if outdated deps found'
+    description: 'Fail if outdated packages found'
     required: false
     default: 'false'
+  comment-pr:
+    description: 'Post results as PR comment'
+    required: false
+    default: 'true'
 
 outputs:
-  vulnerabilities-found:
-    description: 'Boolean: vulnerabilities detected'
-  outdated-found:
-    description: 'Boolean: outdated packages detected'
-  vulnerability-count:
-    description: 'Count of vulnerable packages'
+  audit-found:
+    description: 'Number of vulnerabilities found'
   outdated-count:
-    description: 'Count of outdated packages'
+    description: 'Number of outdated packages'
+  audit-summary:
+    description: 'Audit vulnerability summary'
 
 runs:
-  using: 'composite'
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-
-    - name: Run dependency checks
-      shell: bash
-      run: |
-        node ${{ github.action_path }}/dist/index.js
-      env:
-        NPM_CHECK_UPDATES: ${{ inputs.npm-check-updates }}
-        NPM_AUDIT: ${{ inputs.npm-audit }}
-        FAIL_ON_VULNERABILITIES: ${{ inputs.fail-on-vulnerabilities }}
-        FAIL_ON_OUTDATED: ${{ inputs.fail-on-outdated }}
-        GITHUB_TOKEN: ${{ github.token }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-
-branding:
-  icon: 'alert-circle'
-  color: 'orange'
+  using: 'node20'
+  main: 'index.js'

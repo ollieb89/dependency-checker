@@ -1,27 +1,17 @@
 {
   "name": "dependency-checker",
   "version": "1.0.0",
-  "description": "GitHub Action to scan and report outdated and vulnerable dependencies",
-  "main": "dist/index.js",
+  "description": "GitHub Action to scan for outdated and vulnerable dependencies",
+  "main": "index.js",
   "scripts": {
-    "build": "ncc build src/index.js -o dist --minify",
-    "test": "node src/index.js",
-    "prepare": "npm run build"
+    "test": "echo \"No tests yet\""
   },
+  "keywords": ["github-actions", "dependencies", "security", "npm", "audit"],
+  "author": "Ollie B",
+  "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.1",
-    "@actions/github": "^6.0.0",
-    "npm-check-updates": "^16.14.20"
-  },
-  "devDependencies": {
-    "@vercel/ncc": "^0.38.1"
-  },
-  "keywords": [
-    "github-action",
-    "npm",
-    "security",
-    "dependencies",
-    "vulnerable",
-    "outdated"
-  ]
+    "@actions/exec": "^1.1.1",
+    "@actions/github": "^6.0.0"
+  }
 }

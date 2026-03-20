@@ -1,58 +1,67 @@
 # Dependency Checker
 
-🔍 GitHub Action to scan for outdated and vulnerable dependencies. Posts a summary comment on PRs.
+A GitHub Action to scan for **outdated and vulnerable dependencies** with `npm audit` and version checks.
 
 ## Features
-
-✅ **npm audit**: Detects security vulnerabilities  
-✅ **npm outdated**: Identifies outdated packages  
-✅ **PR Comments**: Automatic summary posted to pull requests  
-✅ **Configurable**: Choose what to check and fail conditions  
+✅ Run npm audit to detect vulnerabilities  
+✅ Check for outdated packages  
+✅ Optional PR comments with results  
+✅ Fail on high/critical vulnerabilities  
+✅ Fail on outdated packages (optional)  
 
 ## Usage
 
 ```yaml
-- uses: ollieb89/dependency-checker@v1.0.0
-  with:
-    npm-check-updates: true
-    npm-audit: true
-    fail-on-vulnerabilities: false
-    fail-on-outdated: false
+name: Dependency Check
+
+on: [pull_request, push]
+
+jobs:
+  check-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ollieb89/dependency-checker@v1.0.0
+        with:
+          check-npm-audit: true
+          check-outdated: true
+          fail-on-high: true
+          comment-pr: true
 ```
 
 ## Inputs
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `npm-check-updates` | `true` | Check npm packages for outdated versions |
-| `npm-audit` | `true` | Run npm audit for security vulnerabilities |
-| `fail-on-vulnerabilities` | `false` | Fail workflow if vulnerabilities found |
-| `fail-on-outdated` | `false` | Fail workflow if outdated deps found |
+| `node-version` | `22` | Node.js version to use |
+| `check-npm-audit` | `true` | Run npm audit for vulnerabilities |
+| `check-outdated` | `true` | Check for outdated packages |
+| `fail-on-high` | `true` | Fail if high/critical vulnerabilities found |
+| `fail-on-outdated` | `false` | Fail if outdated packages found |
+| `comment-pr` | `true` | Post results as PR comment |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `vulnerabilities-found` | Boolean: vulnerabilities detected |
-| `outdated-found` | Boolean: outdated packages detected |
-| `vulnerability-count` | Count of vulnerable packages |
-| `outdated-count` | Count of outdated packages |
+| `audit-found` | Number of high/critical vulnerabilities found |
+| `outdated-count` | Number of outdated packages |
+| `audit-summary` | Detailed audit summary |
 
-## Example Workflow
+## Example
 
 ```yaml
-name: Dependency Check
-on: [pull_request]
-
-jobs:
-  deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ollieb89/dependency-checker@v1.0.0
-        with:
-          fail-on-vulnerabilities: true
+- uses: ollieb89/dependency-checker@v1.0.0
+  with:
+    check-npm-audit: true
+    fail-on-high: true
+    comment-pr: true
 ```
 
-## License
+This will:
+1. Run npm audit to check for vulnerabilities
+2. Fail the workflow if high/critical vulnerabilities are found
+3. Post a PR comment with the results
 
+## License
 MIT
