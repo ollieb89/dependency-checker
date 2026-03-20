@@ -1,0 +1,22 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run build
+      - name: Verify dist is up to date
+        run: |
+          if git diff --exit-code dist/; then
+            echo "✅ dist/ is up to date"
+          else
+            echo "❌ dist/ is outdated. Run 'npm run build' and commit."
+            exit 1
+          fi

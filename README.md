@@ -1,91 +1,89 @@
-# Dependency Checker
+# 🔐 Dependency Checker
 
-A GitHub Action that scans your project for outdated and vulnerable dependencies.
+A GitHub Action to scan for outdated and vulnerable npm dependencies. Get instant visibility into your project's dependency health.
 
 ## Features
 
-✅ **npm audit** — Find security vulnerabilities  
-✅ **Outdated check** — Identify outdated packages  
-✅ **Configurable** — Choose what to check and whether to fail  
-✅ **PR summaries** — Auto-post results to pull requests  
-✅ **JSON reports** — Structured output for custom workflows  
+- ✅ **Vulnerability Scanning** — Detect security vulnerabilities using `npm audit`
+- ✅ **Outdated Package Detection** — Find packages that have newer versions available
+- ✅ **Severity Filtering** — Control which vulnerability levels trigger alerts
+- ✅ **Workflow Summary** — Beautiful reports in GitHub Actions summary
+- ✅ **Flexible Configuration** — Fine-tune checks to your needs
 
 ## Usage
 
 ```yaml
-- name: Check dependencies
-  uses: ollieb89/dependency-checker@v1.0.0
-  with:
-    npm-audit: true
-    outdated-check: true
-    fail-on-vulnerabilities: true
-    fail-on-outdated: false
+name: Dependency Check
+on: [push, pull_request]
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ollieb89/dependency-checker@v1.0.0
+        with:
+          npm-check: 'true'
+          severity: 'moderate'
+          fail-on-outdated: 'false'
 ```
 
 ## Inputs
 
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `npm-audit` | No | `true` | Run npm audit for vulnerabilities |
-| `outdated-check` | No | `true` | Check for outdated dependencies |
-| `fail-on-vulnerabilities` | No | `true` | Fail workflow if vulnerabilities found |
-| `fail-on-outdated` | No | `false` | Fail workflow if outdated dependencies found |
-| `exclude-dev` | No | `false` | Exclude dev dependencies from checks |
+| Input | Description | Default |
+|-------|-------------|---------|
+| `npm-check` | Scan npm dependencies | `true` |
+| `severity` | Minimum severity level (low, moderate, high, critical) | `moderate` |
+| `fail-on-outdated` | Fail workflow if outdated packages found | `false` |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `vulnerabilities` | Number of vulnerabilities found |
-| `outdated` | Number of outdated packages |
-| `audit-report` | Full audit report in JSON |
-| `outdated-report` | Full outdated report in JSON |
+| `vulnerabilities-found` | Count of vulnerabilities |
+| `outdated-found` | Count of outdated packages |
+| `report` | Full JSON report |
 
 ## Examples
 
-### Basic usage (fail on vulnerabilities)
-
-```yaml
-name: Deps
-on: [pull_request]
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ollieb89/dependency-checker@v1.0.0
-```
-
-### Warn only (don't fail)
+### Fail on High-Severity Vulnerabilities Only
 
 ```yaml
 - uses: ollieb89/dependency-checker@v1.0.0
   with:
-    fail-on-vulnerabilities: false
-    fail-on-outdated: false
+    severity: 'high'
+    fail-on-outdated: 'false'
 ```
 
-### Strict mode (fail on both)
+### Enforce No Outdated Packages
 
 ```yaml
 - uses: ollieb89/dependency-checker@v1.0.0
   with:
-    fail-on-vulnerabilities: true
-    fail-on-outdated: true
+    npm-check: 'true'
+    fail-on-outdated: 'true'
 ```
 
-## How it works
+## How It Works
 
 1. Runs `npm audit --json` to detect security vulnerabilities
-2. Runs `npm outdated --json` to identify outdated packages
-3. Posts a summary to the PR (if running in a PR context)
-4. Optionally fails the workflow based on configuration
+2. Runs `npm outdated --json` to find packages with newer versions
+3. Filters results by severity level
+4. Posts formatted summary to GitHub Actions summary
+5. Optionally fails the workflow based on configuration
 
-## SEO Tags
+## Local Testing
 
-`github-action`, `npm-audit`, `dependency-management`, `security`, `devops`, `continuous-integration`, `vulnerability-scanning`, `dependency-checker`, `npm-packages`, `ci-cd`
+```bash
+npm install
+npm run build
+node dist/index.js
+```
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT — See [LICENSE](LICENSE)
+
+## Author
+
+Built by [@ollieb89](https://github.com/ollieb89)
