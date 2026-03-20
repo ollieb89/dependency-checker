@@ -2,119 +2,175 @@ const core = require('@actions/core');
 const exec = require('@actions/exec');
 const github = require('@actions/github');
 const fs = require('fs');
+const path = require('path');
 
 async function run() {
   try {
-    const checkNpmAudit = core.getInput('check-npm-audit') === 'true';
-    const checkOutdated = core.getInput('check-outdated') === 'true';
-    const failOnHigh = core.getInput('fail-on-high') === 'true';
-    const failOnOutdated = core.getInput('fail-on-outdated') === 'true';
-    const commentPr = core.getInput('comment-pr') === 'true';
+    const checkNpm = core.getInput('check-npm') === 'true';
+    const checkPython = core.getInput('check-python') === 'true';
+    const failOnVulnerable = core.getInput('fail-on-vulnerable') === 'true';
+    const githubToken = core.getInput('github-token');
 
-    let auditOutput = '';
-    let outdatedOutput = '';
-    let auditFound = 0;
-    let outdatedCount = 0;
-    let shouldFail = false;
+    let issues = [];
+    let summary = '';
 
-    // Run npm audit
-    if (checkNpmAudit) {
-      core.info('🔍 Running npm audit...');
-      try {
-        await exec.exec('npm', ['audit', '--json'], {
-          ignoreReturnCode: true,
-          listeners: {
-            stdout: (data) => { auditOutput += data.toString(); }
-          }
-        });
-        
-        try {
-          const auditData = JSON.parse(auditOutput);
-          const vulnerabilities = auditData.metadata?.vulnerabilities || {};
-          auditFound = (vulnerabilities.critical || 0) + (vulnerabilities.high || 0);
-          
-          core.setOutput('audit-found', auditFound);
-          core.info(`✅ Audit complete: ${auditFound} high/critical vulnerabilities found`);
-          
-          if (auditFound > 0 && failOnHigh) {
-            shouldFail = true;
-            core.warning(`🚨 High/critical vulnerabilities detected!`);
-          }
-        } catch (e) {
-          core.warning(`Could not parse npm audit JSON: ${e.message}`);
-        }
-      } catch (e) {
-        core.warning(`npm audit failed: ${e.message}`);
-      }
+    // Check npm packages
+    if (checkNpm) {
+      core.info('Scanning npm dependencies...');
+      const npmIssues = await scanNpm();
+      issues.push(...npmIssues);
     }
 
-    // Check outdated packages
-    if (checkOutdated) {
-      core.info('📦 Checking for outdated packages...');
-      try {
-        await exec.exec('npm', ['outdated', '--json'], {
-          ignoreReturnCode: true,
-          listeners: {
-            stdout: (data) => { outdatedOutput += data.toString(); }
-          }
-        });
-        
-        try {
-          const outdatedData = JSON.parse(outdatedOutput);
-          outdatedCount = Object.keys(outdatedData).length;
-          
-          core.setOutput('outdated-count', outdatedCount);
-          core.info(`✅ Outdated check complete: ${outdatedCount} packages can be updated`);
-          
-          if (outdatedCount > 0 && failOnOutdated) {
-            shouldFail = true;
-            core.warning(`⚠️ ${outdatedCount} outdated packages detected`);
-          }
-        } catch (e) {
-          core.warning(`Could not parse npm outdated JSON: ${e.message}`);
-        }
-      } catch (e) {
-        core.warning(`npm outdated check failed: ${e.message}`);
-      }
+    // Check Python packages
+    if (checkPython) {
+      core.info('Scanning Python dependencies...');
+      const pythonIssues = await scanPython();
+      issues.push(...pythonIssues);
     }
 
-    // Post PR comment if enabled
-    if (commentPr && github.context.eventName === 'pull_request') {
-      const token = core.getInput('token') || process.env.GITHUB_TOKEN;
-      if (token) {
-        const octokit = github.getOctokit(token);
-        const pr = github.context.payload.pull_request;
-        
-        let comment = `## 🔐 Dependency Check Results\n\n`;
-        if (checkNpmAudit) {
-          comment += `- **Vulnerabilities**: ${auditFound === 0 ? '✅ None' : `🚨 ${auditFound} high/critical`}\n`;
-        }
-        if (checkOutdated) {
-          comment += `- **Outdated Packages**: ${outdatedCount === 0 ? '✅ None' : `⚠️ ${outdatedCount} packages`}\n`;
-        }
-        
-        try {
-          await octokit.rest.issues.createComment({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-            issue_number: pr.number,
-            body: comment
-          });
-          core.info('✅ PR comment posted');
-        } catch (e) {
-          core.warning(`Failed to post PR comment: ${e.message}`);
-        }
-      }
-    }
-
-    if (shouldFail) {
-      core.setFailed('Dependency checks failed');
+    // Generate summary
+    if (issues.length === 0) {
+      summary = '✅ All dependencies are up-to-date and secure!';
+      core.info(summary);
     } else {
-      core.info('✅ All dependency checks passed');
+      summary = `⚠️ Found ${issues.length} dependency issues:\n\n`;
+      issues.forEach((issue, i) => {
+        summary += `${i + 1}. **${issue.package}** (${issue.type})\n   - Current: ${issue.current}\n   - Latest: ${issue.latest}\n   - Severity: ${issue.severity}\n\n`;
+      });
+    }
+
+    // Post PR comment if in PR context
+    if (github.context.eventName === 'pull_request' && githubToken) {
+      const octokit = github.getOctokit(githubToken);
+      await octokit.rest.issues.createComment({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        issue_number: github.context.issue.number,
+        body: `## 📦 Dependency Checker\n\n${summary}`
+      });
+    }
+
+    // Set outputs
+    core.setOutput('summary', summary);
+    core.setOutput('issue-count', issues.length);
+
+    // Fail if requested and issues found
+    if (failOnVulnerable && issues.length > 0) {
+      core.setFailed(`Found ${issues.length} dependency issues`);
     }
   } catch (error) {
-    core.setFailed(`Action failed: ${error.message}`);
+    core.setFailed(error.message);
   }
+}
+
+async function scanNpm() {
+  const issues = [];
+  const packageJsonPath = path.join(process.cwd(), 'package.json');
+
+  if (!fs.existsSync(packageJsonPath)) {
+    return issues;
+  }
+
+  try {
+    // Run npm audit for vulnerabilities
+    let auditOutput = '';
+    await exec.exec('npm', ['audit', '--json'], {
+      listeners: {
+        stdout: (data) => {
+          auditOutput += data.toString();
+        }
+      },
+      ignoreReturnCode: true
+    });
+
+    const auditData = JSON.parse(auditOutput);
+    
+    if (auditData.vulnerabilities) {
+      Object.entries(auditData.vulnerabilities).forEach(([pkg, vuln]) => {
+        issues.push({
+          package: pkg,
+          type: 'vulnerability',
+          current: vuln.installed || 'unknown',
+          latest: vuln.fixed || 'varies',
+          severity: vuln.severity || 'unknown'
+        });
+      });
+    }
+
+    // Check for outdated packages
+    let outdatedOutput = '';
+    await exec.exec('npm', ['outdated', '--json'], {
+      listeners: {
+        stdout: (data) => {
+          outdatedOutput += data.toString();
+        }
+      },
+      ignoreReturnCode: true
+    });
+
+    if (outdatedOutput) {
+      try {
+        const outdatedData = JSON.parse(outdatedOutput);
+        Object.entries(outdatedData).forEach(([pkg, info]) => {
+          if (info.current !== info.latest) {
+            issues.push({
+              package: pkg,
+              type: 'outdated',
+              current: info.current,
+              latest: info.latest,
+              severity: 'low'
+            });
+          }
+        });
+      } catch (e) {
+        // outdated might output invalid JSON
+      }
+    }
+  } catch (error) {
+    core.warning(`npm scan failed: ${error.message}`);
+  }
+
+  return issues;
+}
+
+async function scanPython() {
+  const issues = [];
+  const requirementsPath = path.join(process.cwd(), 'requirements.txt');
+
+  if (!fs.existsSync(requirementsPath)) {
+    return issues;
+  }
+
+  try {
+    let pipCheckOutput = '';
+    await exec.exec('pip', ['check'], {
+      listeners: {
+        stdout: (data) => {
+          pipCheckOutput += data.toString();
+        }
+      },
+      ignoreReturnCode: true
+    });
+
+    if (pipCheckOutput.includes('ERROR')) {
+      const lines = pipCheckOutput.split('\n');
+      lines.forEach((line) => {
+        if (line.includes('is incompatible')) {
+          issues.push({
+            package: line.split(' ')[0],
+            type: 'conflict',
+            current: 'unknown',
+            latest: 'unknown',
+            severity: 'high'
+          });
+        }
+      });
+    }
+  } catch (error) {
+    core.warning(`Python scan failed: ${error.message}`);
+  }
+
+  return issues;
 }
 
 run();

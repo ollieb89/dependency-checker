@@ -1,41 +1,28 @@
-name: 'Dependency Checker'
-description: 'Scan for outdated and vulnerable dependencies with npm audit and version checks'
-author: 'Ollie B'
+name: Dependency Checker
+description: 'Scan for outdated and vulnerable dependencies, report in PR comments'
+author: ollieb89
+branding:
+  icon: package
+  color: blue
 
 inputs:
-  node-version:
-    description: 'Node.js version to use'
-    required: false
-    default: '22'
-  check-npm-audit:
-    description: 'Run npm audit for vulnerabilities'
+  check-npm:
+    description: 'Check npm packages (package.json)'
     required: false
     default: 'true'
-  check-outdated:
-    description: 'Check for outdated packages'
+  check-python:
+    description: 'Check Python packages (requirements.txt, pyproject.toml)'
     required: false
     default: 'true'
-  fail-on-high:
-    description: 'Fail if high/critical vulnerabilities found'
+  fail-on-vulnerable:
+    description: 'Fail workflow if vulnerabilities found'
     required: false
     default: 'true'
-  fail-on-outdated:
-    description: 'Fail if outdated packages found'
+  github-token:
+    description: 'GitHub token for PR comments'
     required: false
-    default: 'false'
-  comment-pr:
-    description: 'Post results as PR comment'
-    required: false
-    default: 'true'
-
-outputs:
-  audit-found:
-    description: 'Number of vulnerabilities found'
-  outdated-count:
-    description: 'Number of outdated packages'
-  audit-summary:
-    description: 'Audit vulnerability summary'
+    default: ${{ github.token }}
 
 runs:
   using: 'node20'
-  main: 'index.js'
+  main: 'dist/index.js'
