@@ -1,28 +1,32 @@
 name: Dependency Checker
-description: 'Scan for outdated and vulnerable dependencies, report in PR comments'
-author: ollieb89
-branding:
-  icon: package
-  color: blue
+description: Scan for outdated and vulnerable dependencies in npm, pip, and other package managers
 
 inputs:
-  check-npm:
-    description: 'Check npm packages (package.json)'
+  package-managers:
+    description: 'Comma-separated list of package managers to check (npm,pip,cargo,composer,bundler)'
     required: false
-    default: 'true'
-  check-python:
-    description: 'Check Python packages (requirements.txt, pyproject.toml)'
-    required: false
-    default: 'true'
+    default: 'npm'
   fail-on-vulnerable:
-    description: 'Fail workflow if vulnerabilities found'
+    description: 'Fail the action if vulnerabilities are found'
     required: false
     default: 'true'
-  github-token:
-    description: 'GitHub token for PR comments'
+  fail-on-outdated:
+    description: 'Fail the action if outdated dependencies are found'
     required: false
-    default: ${{ github.token }}
+    default: 'false'
+
+outputs:
+  vulnerabilities-found:
+    description: 'Number of vulnerabilities found'
+  outdated-found:
+    description: 'Number of outdated dependencies found'
+  report:
+    description: 'Summary report as JSON'
 
 runs:
   using: 'node20'
   main: 'dist/index.js'
+
+branding:
+  icon: 'alert-triangle'
+  color: 'orange'

@@ -2,32 +2,19 @@
   "name": "dependency-checker",
   "version": "1.0.0",
   "description": "GitHub Action to scan for outdated and vulnerable dependencies",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"No tests yet\""
+    "build": "ncc build src/index.js -o dist",
+    "test": "node src/test.js"
   },
-  "keywords": [
-    "github-actions",
-    "dependencies",
-    "security",
-    "npm",
-    "audit"
-  ],
+  "keywords": ["github-actions", "dependencies", "security", "vulnerability"],
   "author": "Ollie B",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.10.1",
-    "@actions/exec": "^1.1.1",
-    "@actions/github": "^6.0.0"
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.0"
   },
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ollieb89/dependency-checker.git"
-  },
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/ollieb89/dependency-checker/issues"
-  },
-  "homepage": "https://github.com/ollieb89/dependency-checker#readme"
+  "devDependencies": {
+    "@vercel/ncc": "^0.36.0"
+  }
 }

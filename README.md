@@ -1,63 +1,66 @@
 # Dependency Checker
 
-GitHub Action to automatically scan for outdated and vulnerable dependencies in your repository.
+A GitHub Action to scan for outdated and vulnerable dependencies in your repository.
 
 ## Features
 
-✅ **npm Audit** — Detect npm security vulnerabilities  
-✅ **npm Outdated** — Find outdated npm packages  
-✅ **Python Check** — Detect Python dependency conflicts  
-✅ **PR Comments** — Post results directly in pull requests  
-✅ **Configurable Severity** — Fail workflow on critical issues  
+- ✅ Scan npm packages for vulnerabilities (`npm audit`)
+- ✅ Scan Python packages with `pip-audit`
+- ✅ Scan Rust crates with `cargo audit`
+- ✅ Configurable failure modes (fail on vulnerable, fail on outdated)
+- ✅ JSON report output
+- ✅ PR comment support
 
 ## Usage
 
-```yaml
-name: Check Dependencies
-on: [pull_request, push]
+### Basic (npm only)
 
-jobs:
-  dependency-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run Dependency Checker
-        uses: ollieb89/dependency-checker@v1.0.0
-        with:
-          check-npm: true
-          check-python: true
-          fail-on-vulnerable: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+```yaml
+- uses: ollieb89/dependency-checker@v1.0.0
+```
+
+### With custom config
+
+```yaml
+- uses: ollieb89/dependency-checker@v1.0.0
+  with:
+    package-managers: 'npm,pip,cargo'
+    fail-on-vulnerable: true
+    fail-on-outdated: false
 ```
 
 ## Inputs
 
-| Input | Default | Description |
-|-------|---------|-------------|
-| `check-npm` | `true` | Scan npm packages (package.json) |
-| `check-python` | `true` | Scan Python packages (requirements.txt, pyproject.toml) |
-| `fail-on-vulnerable` | `true` | Fail workflow if vulnerabilities found |
-| `github-token` | `github.token` | GitHub token for PR comments |
+| Input | Description | Default |
+|-------|-------------|---------|
+| `package-managers` | Comma-separated list of package managers to check | `npm` |
+| `fail-on-vulnerable` | Fail the action if vulnerabilities are found | `true` |
+| `fail-on-outdated` | Fail the action if outdated dependencies are found | `false` |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `summary` | Human-readable dependency report |
-| `issue-count` | Total number of issues found |
+| `vulnerabilities-found` | Number of vulnerabilities found |
+| `outdated-found` | Number of outdated dependencies found |
+| `report` | Summary report as JSON |
 
 ## Example Workflow
 
 ```yaml
-- name: Check Dependencies
-  uses: ollieb89/dependency-checker@v1.0.0
-  with:
-    check-npm: true
-    fail-on-vulnerable: true
-```
+name: Check Dependencies
+on: [push, pull_request]
 
-The action will post a comment on your PR with all findings, including package names, current/latest versions, and severity levels.
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ollieb89/dependency-checker@v1.0.0
+        with:
+          package-managers: npm
+          fail-on-vulnerable: true
+```
 
 ## License
 
